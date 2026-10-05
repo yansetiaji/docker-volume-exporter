@@ -54,8 +54,8 @@ func serve(t *testing.T, h http.HandlerFunc) *http.Client {
 		t.Fatal(err)
 	}
 	srv := &http.Server{Handler: h}
-	go srv.Serve(l)
-	t.Cleanup(func() { srv.Close() })
+	go func() { _ = srv.Serve(l) }()
+	t.Cleanup(func() { _ = srv.Close() })
 	return newClient(sock)
 }
 
@@ -65,7 +65,7 @@ func TestFetch(t *testing.T) {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
-		w.Write([]byte(`{"Volumes":[{"Name":"a","Driver":"local","UsageData":{"Size":42,"RefCount":1}}]}`))
+		_, _ = w.Write([]byte(`{"Volumes":[{"Name":"a","Driver":"local","UsageData":{"Size":42,"RefCount":1}}]}`))
 	})
 
 	got, err := fetch(context.Background(), c)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -47,7 +48,7 @@ func fetch(ctx context.Context, c *http.Client) ([]volume, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("docker api: %s", resp.Status)
 	}
@@ -92,7 +93,7 @@ func metrics(w http.ResponseWriter, _ *http.Request) {
 	b.WriteString("# TYPE docker_volume_exporter_last_refresh_timestamp_seconds gauge\n")
 	fmt.Fprintf(&b, "docker_volume_exporter_last_refresh_timestamp_seconds %d\n", lastRefresh.Unix())
 	w.Header().Set("Content-Type", "text/plain; version=0.0.4")
-	fmt.Fprint(w, b.String())
+	_, _ = io.WriteString(w, b.String())
 }
 
 func newClient(socket string) *http.Client {
