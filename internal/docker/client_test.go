@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // serve starts handler h on a temporary unix socket and returns a client for it.
@@ -16,7 +17,7 @@ func serve(t *testing.T, h http.HandlerFunc) *Client {
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv := &http.Server{Handler: h}
+	srv := &http.Server{Handler: h, ReadHeaderTimeout: 5 * time.Second}
 	go func() { _ = srv.Serve(l) }()
 	t.Cleanup(func() { _ = srv.Close() })
 	return NewClient(sock)
