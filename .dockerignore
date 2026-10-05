@@ -3,6 +3,6 @@
 *.md
 LICENSE
 docker-compose.yml
-docker-volume-exporter
-exporter
+bin
 dist
+Makefile
