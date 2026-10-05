@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -21,6 +22,9 @@ type volume struct {
 		RefCount int64
 	}
 }
+
+// version is set at build time via -ldflags "-X main.version=...".
+var version = "dev"
 
 var (
 	mu          sync.RWMutex
@@ -44,7 +48,7 @@ func fetch(ctx context.Context, c *http.Client) ([]volume, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("docker api: %s", resp.Status)
 	}
@@ -89,7 +93,15 @@ func metrics(w http.ResponseWriter, _ *http.Request) {
 	b.WriteString("# TYPE docker_volume_exporter_last_refresh_timestamp_seconds gauge\n")
 	fmt.Fprintf(&b, "docker_volume_exporter_last_refresh_timestamp_seconds %d\n", lastRefresh.Unix())
 	w.Header().Set("Content-Type", "text/plain; version=0.0.4")
-	fmt.Fprint(w, b.String())
+	_, _ = io.WriteString(w, b.String())
+}
+
+func newClient(socket string) *http.Client {
+	return &http.Client{Transport: &http.Transport{
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, "unix", socket)
+		},
+	}}
 }
 
 func main() {
@@ -98,16 +110,17 @@ func main() {
 	if err != nil || interval <= 0 {
 		log.Fatalf("invalid INTERVAL: %v", err)
 	}
-	client := &http.Client{Transport: &http.Transport{
-		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-			return (&net.Dialer{}).DialContext(ctx, "unix", socket)
-		},
-	}}
+	timeout, err := time.ParseDuration(env("TIMEOUT", "5m"))
+	if err != nil || timeout <= 0 {
+		log.Fatalf("invalid TIMEOUT: %v", err)
+	}
+	client := newClient(socket)
 
-	refresh(client, interval)
+	log.Printf("docker-volume-exporter %s", version)
+	refresh(client, timeout)
 	go func() {
 		for range time.Tick(interval) {
-			refresh(client, interval)
+			refresh(client, timeout)
 		}
 	}()
 

@@ -1,9 +1,12 @@
 FROM --platform=$BUILDPLATFORM golang:1.27 AS build
-ARG TARGETOS TARGETARCH
+ARG TARGETOS TARGETARCH VERSION=dev
 WORKDIR /src
 COPY go.mod main.go ./
-RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags="-s -w" -o /exporter .
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags="-s -w -X main.version=$VERSION" -o /exporter .
 
 FROM scratch
+LABEL org.opencontainers.image.source="https://github.com/yansetiaji/docker-volume-exporter" \
+      org.opencontainers.image.description="Prometheus exporter for Docker volume sizes" \
+      org.opencontainers.image.licenses="MIT"
 COPY --from=build /exporter /exporter
 ENTRYPOINT ["/exporter"]
