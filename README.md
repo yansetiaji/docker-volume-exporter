@@ -1,6 +1,6 @@
 # docker-volume-exporter
 
-Minimal Prometheus exporter for Docker volume sizes. Sizes come from the Docker Engine API (`/system/df?type=volume`), not `du`.
+Minimal Prometheus exporter for Docker volume sizes. Sizes come from the Docker Engine API (`/system/df?type=volume`).
 
 A background goroutine refreshes the data every `INTERVAL`, so `/metrics` always responds instantly from cache. If a refresh fails, the error is logged and the last good data keeps being served.
 
@@ -16,8 +16,6 @@ Or from source (Go 1.27.1):
 ```sh
 go run .
 ```
-
-On macOS Docker Desktop / Colima, set `DOCKER_SOCKET` to your socket path.
 
 ## Configuration
 
@@ -40,10 +38,14 @@ Volumes whose size Docker has not computed (-1) are skipped.
 ## Build
 
 ```sh
-docker buildx build --platform linux/amd64 -t ghcr.io/yansetiaji/docker-volume-exporter:0.1 --load .
+docker build -t ghcr.io/yansetiaji/docker-volume-exporter:0.1 .
 ```
 
-The Dockerfile cross-compiles on the build host, so it works on Apple Silicon without emulating the Go compiler.
+For a specific platform:
+
+```sh
+docker buildx build --platform linux/amd64 -t ghcr.io/yansetiaji/docker-volume-exporter:0.1 --load .
+```
 
 ## Prometheus
 
