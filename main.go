@@ -22,6 +22,9 @@ type volume struct {
 	}
 }
 
+// version is set at build time via -ldflags "-X main.version=...".
+var version = "dev"
+
 var (
 	mu          sync.RWMutex
 	volumes     []volume
@@ -92,22 +95,31 @@ func metrics(w http.ResponseWriter, _ *http.Request) {
 	fmt.Fprint(w, b.String())
 }
 
+func newClient(socket string) *http.Client {
+	return &http.Client{Transport: &http.Transport{
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, "unix", socket)
+		},
+	}}
+}
+
 func main() {
 	socket := env("DOCKER_SOCKET", "/var/run/docker.sock")
 	interval, err := time.ParseDuration(env("INTERVAL", "60s"))
 	if err != nil || interval <= 0 {
 		log.Fatalf("invalid INTERVAL: %v", err)
 	}
-	client := &http.Client{Transport: &http.Transport{
-		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-			return (&net.Dialer{}).DialContext(ctx, "unix", socket)
-		},
-	}}
+	timeout, err := time.ParseDuration(env("TIMEOUT", "5m"))
+	if err != nil || timeout <= 0 {
+		log.Fatalf("invalid TIMEOUT: %v", err)
+	}
+	client := newClient(socket)
 
-	refresh(client, interval)
+	log.Printf("docker-volume-exporter %s", version)
+	refresh(client, timeout)
 	go func() {
 		for range time.Tick(interval) {
-			refresh(client, interval)
+			refresh(client, timeout)
 		}
 	}()
 
