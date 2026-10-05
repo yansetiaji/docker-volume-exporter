@@ -51,17 +51,37 @@ docker_volume_exporter_last_refresh_timestamp_seconds 1791197093
 
 Volumes whose size Docker has not computed (-1) are skipped.
 
+## Prometheus
+
+```yaml
+scrape_configs:
+  - job_name: docker-volumes
+    static_configs:
+      - targets: ["docker-volume-exporter:9101"]
+```
+
 ## Build
 
 ```sh
-docker build -t ghcr.io/yansetiaji/docker-volume-exporter:0.1 .
+docker build -t ghcr.io/yansetiaji/docker-volume-exporter:latest .
 ```
 
 For a specific platform:
 
 ```sh
-docker buildx build --platform linux/amd64 -t ghcr.io/yansetiaji/docker-volume-exporter:0.1 --load .
+docker buildx build --platform linux/amd64 -t ghcr.io/yansetiaji/docker-volume-exporter:latest --load .
 ```
+
+## Project layout
+
+```
+cmd/docker-volume-exporter/   entrypoint (wiring, signals, HTTP server)
+internal/config/              environment configuration
+internal/docker/              Docker Engine API client (unix socket)
+internal/exporter/            cache, refresh loop, /metrics handler
+```
+
+`make build` / `make test` / `make lint` for local development.
 
 ## Security
 
@@ -78,12 +98,3 @@ git tag v0.2.0 && git push origin v0.2.0
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Licensed under the [MIT License](LICENSE).
-
-## Prometheus
-
-```yaml
-scrape_configs:
-  - job_name: docker-volumes
-    static_configs:
-      - targets: ["docker-volume-exporter:9101"]
-```
